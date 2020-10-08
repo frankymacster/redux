@@ -7,6 +7,15 @@ import {
   CLEAR_COMPLETED
 } from '../constants/ActionTypes'
 
+import {
+  AddTodo,
+  DeleteTodo,
+  EditTodo,
+  CompleteTodo,
+  CompleteAllTodos,
+  ClearCompleted
+} from '../logic/js/jAgda.todos.js'
+
 const initialState = [
   {
     text: 'Use Redux',
@@ -18,43 +27,22 @@ const initialState = [
 export default function todos(state = initialState, action) {
   switch (action.type) {
     case ADD_TODO:
-      return [
-        ...state,
-        {
-          id: state.reduce((maxId, todo) => Math.max(todo.id, maxId), -1) + 1,
-          completed: false,
-          text: action.text
-        }
-      ]
+      return AddTodo(state)(action.text)
 
     case DELETE_TODO:
-      return state.filter(todo =>
-        todo.id !== action.id
-      )
+      return DeleteTodo(state)(action.id)
 
     case EDIT_TODO:
-      return state.map(todo =>
-        todo.id === action.id ?
-          { ...todo, text: action.text } :
-          todo
-      )
+      return EditTodo(state)(action.id)(action.text)
 
     case COMPLETE_TODO:
-      return state.map(todo =>
-        todo.id === action.id ?
-          { ...todo, completed: !todo.completed } :
-          todo
-      )
+      return CompleteTodo(state)(action.id)
 
     case COMPLETE_ALL_TODOS:
-      const areAllMarked = state.every(todo => todo.completed)
-      return state.map(todo => ({
-        ...todo,
-        completed: !areAllMarked
-      }))
+      return CompleteAllTodos(state)
 
     case CLEAR_COMPLETED:
-      return state.filter(todo => todo.completed === false)
+      return ClearCompleted(state)
 
     default:
       return state

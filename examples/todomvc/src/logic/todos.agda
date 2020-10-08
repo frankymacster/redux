@@ -20,8 +20,9 @@ AddTodo todos text =
     }
 
 {-# COMPILE JS AddTodo =
-  function (todos, text) {
-    return [
+  function (todos) {
+    return function (text) {
+      return [
         ...todos,
         {
           id: todos.reduce((maxId, todo) => Math.max(todo.id, maxId), -1) + 1,
@@ -29,6 +30,7 @@ AddTodo todos text =
           text: text
         }
       ]
+    }
   }
 #-}
 
@@ -36,10 +38,12 @@ DeleteTodo : (List Todo) → ℕ → (List Todo)
 DeleteTodo todos id' = filter (λ todo → Todo.id todo ≟ id') todos
 
 {-# COMPILE JS DeleteTodo =
-  function (todos, id) {
-    return todos.filter(todo =>
-      todo.id !== id
-    )
+  function (todos) {
+    return function (id) {
+      return todos.filter(function (todo) {
+        return todo.id === id
+      });
+    }
   }
 #-}
 
@@ -52,12 +56,18 @@ EditTodo todos id text =
     todos
 
 {-# COMPILE JS EditTodo =
-  function (todos, id, text) {
-    return todos.map(todo =>
-        todo.id === id ?
-          { ...todo, text } :
-          todo
-      )
+  function (todos) {
+    return function (id) {
+      return function (text) {
+        return todos.map(function (todo) {
+          if (todo.id === id) {
+            todo.text = text;
+          }
+
+          return todo;
+        });
+      }
+    }
   }
 #-}
 
@@ -70,12 +80,17 @@ CompleteTodo todos id =
     todos
 
 {-# COMPILE JS CompleteTodo =
-  (todos, id) =>
-    todos.map(todo =>
-      todo.id === id ?
-        { ...todo, completed: !todo.completed } :
-        todo
-    )
+  function (todos) {
+    return function (id) {
+      return todos.map(function (todo) {
+        if (todo.id === id) {
+          todo.completed = true;
+        }
+
+        return todo;
+      });
+    }
+  }
 #-}
 
 CompleteAllTodos : (List Todo) → (List Todo)
@@ -85,12 +100,11 @@ CompleteAllTodos todos =
     todos
 
 {-# COMPILE JS CompleteAllTodos =
-  (todos) => {
-    const areAllMarked = state.every(todo => todo.completed)
-    return todos.map(todo => ({
-      ...todo,
-      completed: !areAllMarked
-    }))
+  function (todos) {
+    return todos.map(function(todo) {
+      todo.completed = true;
+      return todo;
+    });
   }
 #-}
 
@@ -99,8 +113,11 @@ ClearCompleted todos =
   filter (λ todo → Bool._≟_ (Todo.completed todo) true) todos
 
 {-# COMPILE JS ClearCompleted =
-  (todos) =>
-    todos.filter(todo => todo.completed === false)
+  function (todos) {
+    return todos.filter(function(todo) {
+      return !todo.completed;
+    });
+  }
 #-}
 
 -- add-todos-length-increased-by-1 : ∀ (todos : List Todo) → length (AddTodo todos "test")
