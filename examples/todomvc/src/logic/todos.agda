@@ -2,7 +2,7 @@ open import Data.Bool as Bool using (Bool; false; true; if_then_else_)
 open import Data.String using (String)
 open import Data.Nat using (ℕ; _+_; _≟_; suc)
 open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Data.List using (List; filter; map; take; foldl)
+open import Data.List using (List; filter; map; take; foldl; length)
 open import Data.List.Properties
 open import Data.Maybe using (to-witness)
 open import Data.Fin using (fromℕ; _-_; zero)
@@ -10,7 +10,7 @@ open import Data.Product as Prod using (∃; ∃₂; _×_; _,_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong)
 open Eq.≡-Reasoning
-open import Data.Vec using (Vec; fromList; toList; last; []; _∷_; [_]; _∷ʳ_; _++_; length; lookup; head; initLast)
+open import Data.Vec using (Vec; fromList; toList; last; []; _∷_; [_]; _∷ʳ_; _++_; lookup; head; initLast)
 open import Relation.Binary.PropositionalEquality as P
   using (_≡_; _≢_; refl; _≗_; cong₂)
 
@@ -20,30 +20,6 @@ record Todo : Set where
     completed : Bool
     id        : ℕ
 
--- AddTodo : (List Todo) → String → (List Todo)
--- AddTodo todos text =
---   todos ∷ʳ
---   record
---     { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
---     ; completed = false
---     ; text      = text
---     }
-
--- -- should add new element to list
--- AddTodoAddsNewListItem :
---   (todos : List Todo) (text : String) →
---     length (AddTodo todos text) ≡ length todos + 1
--- AddTodoAddsNewListItem todos text = length-++ todos
-  -- begin
-  --   length (AddTodo todos text)
-  -- ≡⟨⟩
-  --   length (todos ++ record { text = text ; completed = false ; id = 1 } ∷ [])
-  -- ≡⟨ length-++ todos ⟩
-  --   length todos + length (record { text = text ; completed = false ; id = 1 } ∷ [])
-  -- ≡⟨⟩
-  --   length todos + 1
-  -- ∎
-
 AddTodo : ∀ {n : ℕ} → (Vec Todo n) → String → (Vec Todo (1 + n))
 AddTodo todos text =
   todos ∷ʳ
@@ -52,6 +28,11 @@ AddTodo todos text =
     ; completed = false
     ; text      = text
     }
+
+AddTodoAddsNewListItem :
+  ∀ {n : ℕ} → (todos : Vec Todo n) (text : String) →
+    length (toList (AddTodo todos text)) ≡ length (toList todos) + 1
+AddTodoAddsNewListItem todos text = fromList (length-++ (toList todos))
 
 -- TODO add to std-lib
 vecLast : ∀ {a} {A : Set a} {l} {n : ℕ} (xs : Vec A n) → last (xs ∷ʳ l) ≡ l
@@ -72,6 +53,7 @@ AddTodoLastAddedElementIsTodo :
         }
 AddTodoLastAddedElementIsTodo todos text = vecLast todos
 
+-- should set (new element).completed to false
 AddTodoSetsNewCompletedToFalse :
   ∀ {n} (todos : Vec Todo n) (text : String) →
     Todo.completed (last (AddTodo todos text)) ≡ false
@@ -79,29 +61,30 @@ AddTodoSetsNewCompletedToFalse todos text
   rewrite
     (AddTodoLastAddedElementIsTodo todos text) =
       refl
-
--- should set (new element).completed to false
 -- should set (new element).id to an id not existing already in the list
--- AddTodoSetsNewIdTo1 :
---   ∀ {n : ℕ} (todos : Vec Todo n) (text : String) →
---     Todo.id (last (AddTodo todos text)) ≡ 1
--- AddTodoSetsNewIdTo1 = {!   !}
+AddTodoSetsNewIdTo1 :
+  ∀ {n} (todos : Vec Todo n) (text : String) →
+    Todo.id (last (AddTodo todos text)) ≡ 1
+AddTodoSetsNewIdTo1 todos text
+  rewrite
+    (AddTodoLastAddedElementIsTodo todos text) =
+      refl
 -- should not touch other elements in the list
 
--- {-# COMPILE JS AddTodo =
---   function (todos) {
---     return function (text) {
---       return [
---         ...todos,
---         {
---           id: todos.reduce((maxId, todo) => Math.max(todo.id, maxId), -1) + 1,
---           completed: false,
---           text: text
---         }
---       ]
---     }
---   }
--- #-}
+{-# COMPILE JS AddTodo =
+  function (todos) {
+    return function (text) {
+      return [
+        ...todos,
+        {
+          id: todos.reduce((maxId, todo) => Math.max(todo.id, maxId), -1) + 1,
+          completed: false,
+          text: text
+        }
+      ]
+    }
+  }
+#-}
 
 DeleteTodo : (List Todo) → ℕ → (List Todo)
 DeleteTodo todos id' = filter (λ todo → Todo.id todo ≟ id') todos
