@@ -2,7 +2,7 @@ open import Data.Bool as Bool using (Bool; false; true; if_then_else_)
 open import Data.String using (String)
 open import Data.Nat using (ℕ; _+_; _≟_; suc)
 open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Data.List using (List; filter; map; take; foldl; length)
+open import Data.List as l using (List; filter; map; take; foldl; length)
 open import Data.List.Properties
 open import Data.Maybe using (to-witness)
 open import Data.Fin using (fromℕ; _-_; zero)
@@ -10,9 +10,15 @@ open import Data.Product as Prod using (∃; ∃₂; _×_; _,_)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong)
 open Eq.≡-Reasoning
-open import Data.Vec using (Vec; fromList; toList; last; []; _∷_; [_]; _∷ʳ_; _++_; lookup; head; initLast)
+open import Level using (Level)
+open import Data.Vec as v using (Vec; fromList; toList; last; length; []; _∷_; [_]; _∷ʳ_; _++_; lookup; head; initLast; filter; map)
 open import Relation.Binary.PropositionalEquality as P
   using (_≡_; _≢_; refl; _≗_; cong₂)
+open import Data.Nat.Properties using (+-comm)
+open import Relation.Unary using (Pred; Decidable)
+open import Relation.Nullary using (does)
+open import Data.Vec.Bounded.Base using (padRight)
+
 
 record Todo : Set where
   field
@@ -29,10 +35,29 @@ AddTodo todos text =
     ; text      = text
     }
 
+private
+  variable
+    a : Level
+    A : Set a
+
+vecLength-++ :
+  ∀ {n m} (xs : Vec A n) {ys : Vec A m} →
+    v.length (xs ++ ys) ≡ v.length xs + v.length ys
+vecLength-++ []       = refl
+vecLength-++ (x ∷ xs) = cong suc (vecLength-++ xs)
+
 AddTodoAddsNewListItem :
   ∀ {n : ℕ} → (todos : Vec Todo n) (text : String) →
-    length (toList (AddTodo todos text)) ≡ length (toList todos) + 1
-AddTodoAddsNewListItem todos text = fromList (length-++ (toList todos))
+    v.length (AddTodo todos text) ≡ v.length todos + 1
+AddTodoAddsNewListItem []       text = refl
+AddTodoAddsNewListItem (x ∷ xs) text =
+  begin
+    v.length (AddTodo (x ∷ xs) text)
+  ≡⟨⟩
+    1 + v.length (x ∷ xs)
+  ≡⟨ +-comm 1 (v.length (x ∷ xs))⟩
+    v.length (x ∷ xs) + 1
+  ∎
 
 -- TODO add to std-lib
 vecLast : ∀ {a} {A : Set a} {l} {n : ℕ} (xs : Vec A n) → last (xs ∷ʳ l) ≡ l
@@ -69,7 +94,7 @@ AddTodoSetsNewIdTo1 todos text
   rewrite
     (AddTodoLastAddedElementIsTodo todos text) =
       refl
--- should not touch other elements in the list
+-- TODO should not touch other elements in the list
 
 {-# COMPILE JS AddTodo =
   function (todos) {
@@ -86,8 +111,22 @@ AddTodoSetsNewIdTo1 todos text
   }
 #-}
 
-DeleteTodo : (List Todo) → ℕ → (List Todo)
-DeleteTodo todos id' = filter (λ todo → Todo.id todo ≟ id') todos
+-- DeleteTodo : (List Todo) → ℕ → (List Todo)
+-- DeleteTodo todos id' = filter (λ todo → Todo.id todo ≟ id') todos
+
+private
+  variable
+    p : Level
+
+DeleteTodo : ∀ {n} → (Vec Todo n) → ℕ → (Vec Todo n)
+DeleteTodo todos id' =
+  padRight
+    record
+      { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
+      ; completed = false
+      ; text      = ""
+      }
+    (v.filter (λ todo → Todo.id todo ≟ id') todos)
 
 -- should remove element from the list unless there are no elements
 -- should remove element with given id
@@ -103,9 +142,9 @@ DeleteTodo todos id' = filter (λ todo → Todo.id todo ≟ id') todos
 --   }
 -- #-}
 
-EditTodo : (List Todo) → ℕ → String → (List Todo)
+EditTodo : ∀ {n} → (Vec Todo n) → ℕ → String → (Vec Todo n)
 EditTodo todos id text =
-  map (λ todo →
+  v.map (λ todo →
     if (⌊ Todo.id todo ≟ id ⌋)
     then record todo { text = text }
     else todo)
@@ -132,9 +171,9 @@ EditTodo todos id text =
 --   }
 -- #-}
 
-CompleteTodo : (List Todo) → ℕ → (List Todo)
+CompleteTodo : ∀ {n} → (Vec Todo n) → ℕ → (Vec Todo n)
 CompleteTodo todos id =
-  map (λ todo →
+  v.map (λ todo →
     if (⌊ Todo.id todo ≟ id ⌋)
     then record todo { completed = true }
     else todo)
@@ -159,9 +198,9 @@ CompleteTodo todos id =
 --   }
 -- #-}
 
-CompleteAllTodos : (List Todo) → (List Todo)
+CompleteAllTodos : ∀ {n} → (Vec Todo n) → (Vec Todo n)
 CompleteAllTodos todos =
-  map (λ todo →
+  v.map (λ todo →
     record todo { completed = true })
     todos
 
@@ -178,9 +217,15 @@ CompleteAllTodos todos =
 --   }
 -- #-}
 
-ClearCompleted : (List Todo) → (List Todo)
+ClearCompleted : ∀ {n} → (Vec Todo n) → (Vec Todo n)
 ClearCompleted todos =
-  filter (λ todo → Bool._≟_ (Todo.completed todo) true) todos
+  padRight
+    record
+      { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
+      ; completed = false
+      ; text      = ""
+      }
+    (v.filter (λ todo → Bool._≟_ (Todo.completed todo) true) todos)
 
 -- should remove all elements where completed = true
 -- should not change other elements
