@@ -1,0 +1,289 @@
+digraph G {
+  "rank1" [label="" style="invis" width="0"]
+  "rank2" [label="" style="invis" width="0"]
+  "rank3" [label="" style="invis" width="0"]
+  "rank4" [label="" style="invis" width="0"]
+  "rank5" [label="" style="invis" width="0"]
+  "rank6" [label="" style="invis" width="0"]
+  "rank7" [label="" style="invis" width="0"]
+  "rank8" [label="" style="invis" width="0"]
+  "rank9" [label="" style="invis" width="0"]
+
+  "rank1" -> "rank2"  [style="invis"]
+  "rank2" -> "rank3"  [style="invis"]
+  "rank3" -> "rank4"  [style="invis"]
+  "rank4" -> "rank5"  [style="invis"]
+  "rank5" -> "rank6"  [style="invis"]
+  "rank6" -> "rank7"  [style="invis"]
+  "rank7" -> "rank8"  [style="invis"]
+  "rank8" -> "rank9"  [style="invis"]
+
+  // AddTodo
+  "[]" -> "[('a',false,1)]" [label="AddTodo('a')"]
+
+  "[('a',false,1)]" -> "[('a',false,1), ('a',false,2)]" [label="AddTodo('a')"]
+  "[('a',false,2)]" -> "[('a',false,2), ('a',false,3)]" [label="AddTodo('a')"]
+
+  "[('a',false,1), ('a',false,2)]" -> "[('a',false,1), ('a',false,2), ('a',false,3)]" [label="AddTodo('a')"]
+
+  {
+    rank="same"
+    "rank1"
+    "[]"
+  }
+
+  {
+    rank="same"
+    "rank2"
+    "[('a',false,1)]"
+    "[('a',false,2)]"
+    "[('a',false,3)]"
+  }
+
+  {
+    rank="same"
+    "rank3"
+    "[('a',false,2), ('a',false,3)]"
+    "[('a',false,1), ('a',false,2)]"
+    "[('a',false,1), ('a',false,3)]"
+  }
+
+  {
+    rank="same"
+    "rank4"
+    "[('a',false,1), ('a',false,2), ('a',false,3)]"
+  }
+
+  {
+    rank="same"
+    "rank5"
+    "[('a',true,1)]"
+    "[('a',true,2)]"
+    "[('a',true,3)]"
+  }
+
+  {
+    rank="same"
+    "rank6"
+    "[('a',true,1), ('a',false,2)]"
+    "[('a',false,1), ('a',true,2)]"
+    "[('a',true,1), ('a',false,3)]"
+    "[('a',false,1), ('a',true,3)]"
+    "[('a',true,2), ('a',false,3)]"
+    "[('a',false,2), ('a',true,3)]"
+  }
+
+  {
+    rank="same"
+    "rank7"
+    "[('a',true,1), ('a',false,2), ('a',false,3)]"
+    "[('a',true,1), ('a',false,2), ('a',false,3)]"
+    "[('a',false,1), ('a',true,2), ('a',false,3)]"
+    "[('a',false,1), ('a',true,2), ('a',false,3)]"
+    "[('a',false,1), ('a',false,2), ('a',true,3)]"
+    "[('a',false,1), ('a',false,2), ('a',true,3)]"
+  }
+
+
+
+  // DeleteTodo
+  "[('a',false,1)]" -> "[]" [label="DeleteTodo(1)"]
+  "[('a',false,2)]" -> "[]" [label="DeleteTodo(2)"]
+  "[('a',false,3)]" -> "[]" [label="DeleteTodo(3)"]
+
+  // idempotent
+  "[]" -> "[]" [label="DeleteTodo(1)"]
+  "[]" -> "[]" [label="DeleteTodo(2)"]
+  "[]" -> "[]" [label="DeleteTodo(3)"]
+
+  // idempotent
+  "[('a',false,1)]" -> "[('a',false,1)]" [label="DeleteTodo(2)"]
+  "[('a',false,1)]" -> "[('a',false,1)]" [label="DeleteTodo(3)"]
+  "[('a',false,2)]" -> "[('a',false,2)]" [label="DeleteTodo(1)"]
+  "[('a',false,2)]" -> "[('a',false,2)]" [label="DeleteTodo(3)"]
+  "[('a',false,3)]" -> "[('a',false,3)]" [label="DeleteTodo(1)"]
+  "[('a',false,3)]" -> "[('a',false,3)]" [label="DeleteTodo(2)"]
+
+  "[('a',true,1)]" -> "[('a',true,1)]" [label="DeleteTodo(2)"]
+  "[('a',true,1)]" -> "[('a',true,1)]" [label="DeleteTodo(3)"]
+  "[('a',true,2)]" -> "[('a',true,2)]" [label="DeleteTodo(1)"]
+  "[('a',true,2)]" -> "[('a',true,2)]" [label="DeleteTodo(3)"]
+  "[('a',true,3)]" -> "[('a',true,3)]" [label="DeleteTodo(1)"]
+  "[('a',true,3)]" -> "[('a',true,3)]" [label="DeleteTodo(2)"]
+
+
+  // idempotent
+  "[('a',false,1), ('a',false,2)]" -> "[('a',false,1), ('a',false,2)]" [label="DeleteTodo(3)"]
+  "[('a',false,1), ('a',false,3)]" -> "[('a',false,1), ('a',false,3)]" [label="DeleteTodo(2)"]
+  "[('a',false,2), ('a',false,3)]" -> "[('a',false,2), ('a',false,3)]" [label="DeleteTodo(1)"]
+
+  "[('a',true,1), ('a',false,2)]" -> "[('a',true,1), ('a',false,2)]" [label="DeleteTodo(3)"]
+  "[('a',true,1), ('a',false,3)]" -> "[('a',true,1), ('a',false,3)]" [label="DeleteTodo(2)"]
+  "[('a',true,2), ('a',false,3)]" -> "[('a',true,2), ('a',false,3)]" [label="DeleteTodo(1)"]
+
+  "[('a',false,1), ('a',true,2)]" -> "[('a',false,1), ('a',true,2)]" [label="DeleteTodo(3)"]
+  "[('a',false,1), ('a',true,3)]" -> "[('a',false,1), ('a',true,3)]" [label="DeleteTodo(2)"]
+  "[('a',false,2), ('a',true,3)]" -> "[('a',false,2), ('a',true,3)]" [label="DeleteTodo(1)"]
+
+  "[('a',true,1), ('a',true,2)]" -> "[('a',true,1), ('a',true,2)]" [label="DeleteTodo(3)"]
+  "[('a',true,1), ('a',true,3)]" -> "[('a',true,1), ('a',true,3)]" [label="DeleteTodo(2)"]
+  "[('a',true,2), ('a',true,3)]" -> "[('a',true,2), ('a',true,3)]" [label="DeleteTodo(1)"]
+
+  "[('a',false,1), ('a',false,2)]" -> "[('a',false,2)]" [label="DeleteTodo(1)"]
+  "[('a',false,1), ('a',false,3)]" -> "[('a',false,3)]" [label="DeleteTodo(1)"]
+  "[('a',false,1), ('a',false,2)]" -> "[('a',false,1)]" [label="DeleteTodo(2)"]
+  "[('a',false,2), ('a',false,3)]" -> "[('a',false,3)]" [label="DeleteTodo(2)"]
+  "[('a',false,1), ('a',false,3)]" -> "[('a',false,1)]" [label="DeleteTodo(3)"]
+  "[('a',false,2), ('a',false,3)]" -> "[('a',false,2)]" [label="DeleteTodo(3)"]
+
+  "[('a',true,1), ('a',false,2)]" -> "[('a',false,2)]" [label="DeleteTodo(1)"]
+  "[('a',true,1), ('a',false,3)]" -> "[('a',false,3)]" [label="DeleteTodo(1)"]
+  "[('a',true,1), ('a',false,2)]" -> "[('a',true,1)]" [label="DeleteTodo(2)"]
+  "[('a',true,2), ('a',false,3)]" -> "[('a',false,3)]" [label="DeleteTodo(2)"]
+  "[('a',true,1), ('a',false,3)]" -> "[('a',true,1)]" [label="DeleteTodo(3)"]
+  "[('a',true,2), ('a',false,3)]" -> "[('a',true,2)]" [label="DeleteTodo(3)"]
+
+  "[('a',false,1), ('a',true,2)]" -> "[('a',true,2)]" [label="DeleteTodo(1)"]
+  "[('a',false,1), ('a',true,3)]" -> "[('a',true,3)]" [label="DeleteTodo(1)"]
+  "[('a',false,1), ('a',true,2)]" -> "[('a',false,1)]" [label="DeleteTodo(2)"]
+  "[('a',false,2), ('a',true,3)]" -> "[('a',true,3)]" [label="DeleteTodo(2)"]
+  "[('a',false,1), ('a',true,3)]" -> "[('a',false,1)]" [label="DeleteTodo(3)"]
+  "[('a',false,2), ('a',true,3)]" -> "[('a',false,2)]" [label="DeleteTodo(3)"]
+
+  "[('a',true,1), ('a',true,2)]" -> "[('a',true,2)]" [label="DeleteTodo(1)"]
+  "[('a',true,1), ('a',true,3)]" -> "[('a',true,3)]" [label="DeleteTodo(1)"]
+  "[('a',true,1), ('a',true,2)]" -> "[('a',true,1)]" [label="DeleteTodo(2)"]
+  "[('a',true,2), ('a',true,3)]" -> "[('a',true,3)]" [label="DeleteTodo(2)"]
+  "[('a',true,1), ('a',true,3)]" -> "[('a',true,1)]" [label="DeleteTodo(3)"]
+  "[('a',true,2), ('a',true,3)]" -> "[('a',true,2)]" [label="DeleteTodo(3)"]
+
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,2), ('a',false,3)]" [label="DeleteTodo(1)"]
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,1), ('a',false,3)]" [label="DeleteTodo(2)"]
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,1), ('a',false,2)]" [label="DeleteTodo(3)"]
+ 
+  // AddTodo
+  "[('a',true,1)]" -> "[('a',true,1), ('a',false,2)]" [label="AddTodo('a')"]
+
+  "[('a',true,2)]" -> "[('a',true,2), ('a',false,3)]" [label="AddTodo('a')"]
+
+  "[('a',true,1), ('a',false,2)]" -> "[('a',true,1), ('a',false,2), ('a',false,3)]" [label="AddTodo('a')"]
+  "[('a',false,1), ('a',true,2)]" -> "[('a',false,1), ('a',true,2), ('a',false,3)]" [label="AddTodo('a')"]
+  "[('a',true,1), ('a',true,2)]" -> "[('a',true,1), ('a',true,2), ('a',false,3)]" [label="AddTodo('a')"]
+
+  // CompleteTodo
+  "[]" -> "[]" [label="CompleteTodo(1)"]
+  "[]" -> "[]" [label="CompleteTodo(2)"]
+  "[]" -> "[]" [label="CompleteTodo(3)"]
+
+  "[('a',false,1)]" -> "[('a',true,1)]" [label="CompleteTodo(1)"]
+  "[('a',false,2)]" -> "[('a',true,2)]" [label="CompleteTodo(2)"]
+  "[('a',false,3)]" -> "[('a',true,3)]" [label="CompleteTodo(3)"]  
+
+  "[('a',true,1)]" -> "[('a',true,1)]" [label="CompleteTodo(1)"]
+  "[('a',true,2)]" -> "[('a',true,2)]" [label="CompleteTodo(2)"]
+  "[('a',true,3)]" -> "[('a',true,3)]" [label="CompleteTodo(3)"]  
+
+  "[('a',false,1), ('a',true,2)]" -> "[('a',true,1), ('a',true,2)]" [label="CompleteTodo(1)"]
+  "[('a',true,1), ('a',false,2)]" -> "[('a',true,1), ('a',true,2)]" [label="CompleteTodo(2)"]
+  "[('a',true,1), ('a',false,3)]" -> "[('a',true,1), ('a',true,3)]" [label="CompleteTodo(3)"]
+  "[('a',true,2), ('a',false,3)]" -> "[('a',true,2), ('a',true,3)]" [label="CompleteTodo(3)"]
+
+
+  "[('a',false,1), ('a',false,2)]" -> "[('a',true,1), ('a',false,2)]" [label="CompleteTodo(1)"]
+  "[('a',false,1), ('a',false,2)]" -> "[('a',false,1), ('a',true,2)]" [label="CompleteTodo(2)"]
+  "[('a',false,1), ('a',false,3)]" -> "[('a',true,1), ('a',false,3)]" [label="CompleteTodo(1)"]
+  "[('a',false,1), ('a',false,3)]" -> "[('a',false,1), ('a',true,3)]" [label="CompleteTodo(3)"]
+  "[('a',false,2), ('a',false,3)]" -> "[('a',true,2), ('a',false,3)]" [label="CompleteTodo(2)"]
+  "[('a',false,2), ('a',false,3)]" -> "[('a',false,2), ('a',true,3)]" [label="CompleteTodo(3)"]
+  "[('a',false,1), ('a',true,3)]" -> "[('a',true,1), ('a',true,3)]" [label="CompleteTodo(1)"]
+  "[('a',false,2), ('a',true,3)]" -> "[('a',true,2), ('a',true,3)]" [label="CompleteTodo(2)"]
+
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',true,1), ('a',false,2), ('a',false,3)]" [label="CompleteTodo(1)"]
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,1), ('a',true,2), ('a',false,3)]" [label="CompleteTodo(2)"]
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,1), ('a',false,2), ('a',true,3)]" [label="CompleteTodo(3)"]
+  
+  "[('a',true,1), ('a',false,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',false,3)]" [label="CompleteTodo(2)"]
+  "[('a',true,1), ('a',false,2), ('a',false,3)]" -> "[('a',true,1), ('a',false,2), ('a',true,3)]" [label="CompleteTodo(3)"]
+  "[('a',false,1), ('a',true,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',false,3)]" [label="CompleteTodo(1)"]
+  "[('a',false,1), ('a',true,2), ('a',false,3)]" -> "[('a',false,1), ('a',true,2), ('a',true,3)]" [label="CompleteTodo(3)"]
+  "[('a',false,1), ('a',false,2), ('a',true,3)]" -> "[('a',true,1), ('a',false,2), ('a',true,3)]" [label="CompleteTodo(1)"]
+  "[('a',false,1), ('a',false,2), ('a',true,3)]" -> "[('a',false,1), ('a',true,2), ('a',true,3)]" [label="CompleteTodo(2)"]
+
+  "[('a',false,1), ('a',true,2), ('a',true,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteTodo(1)"]
+  "[('a',true,1), ('a',false,2), ('a',true,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteTodo(2)"]
+  "[('a',true,1), ('a',true,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteTodo(3)"] 
+
+  // CompleteAllTodos
+  "[]" -> "[]" [label="CompleteAllTodos()"]
+
+  "[('a',false,1)]" -> "[('a',true,1)]" [label="CompleteAllTodos()"]
+  "[('a',true,1)]" -> "[('a',true,1)]" [label="CompleteAllTodos()"]
+
+  "[('a',false,2)]" -> "[('a',true,2)]" [label="CompleteAllTodos()"]
+  "[('a',true,2)]" -> "[('a',true,2)]" [label="CompleteAllTodos()"]
+
+  "[('a',false,3)]" -> "[('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,3)]" -> "[('a',true,3)]" [label="CompleteAllTodos()"]
+
+  "[('a',false,1), ('a',false,2)]" -> "[('a',true,1), ('a',true,2)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',false,2)]" -> "[('a',true,1), ('a',true,2)]" [label="CompleteAllTodos()"]
+  "[('a',false,1), ('a',true,2)]" -> "[('a',true,1), ('a',true,2)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',true,2)]" -> "[('a',true,1), ('a',true,2)]" [label="CompleteAllTodos()"]
+
+  "[('a',false,1), ('a',false,3)]" -> "[('a',true,1), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',false,3)]" -> "[('a',true,1), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',false,1), ('a',true,3)]" -> "[('a',true,1), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',true,3)]" -> "[('a',true,1), ('a',true,3)]" [label="CompleteAllTodos()"]
+
+  "[('a',false,2), ('a',false,3)]" -> "[('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,2), ('a',false,3)]" -> "[('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',false,2), ('a',true,3)]" -> "[('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,2), ('a',true,3)]" -> "[('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',false,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',false,1), ('a',true,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',false,1), ('a',false,2), ('a',true,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',true,2), ('a',false,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',false,2), ('a',true,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',false,1), ('a',true,2), ('a',true,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+  "[('a',true,1), ('a',true,2), ('a',true,3)]" -> "[('a',true,1), ('a',true,2), ('a',true,3)]" [label="CompleteAllTodos()"]
+
+  // ClearCompleted
+  "[]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,1)]" -> "[('a',false,1)]" [label="ClearCompleted()"]
+  "[('a',true,1)]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,2)]" -> "[('a',false,2)]" [label="ClearCompleted()"]
+  "[('a',true,2)]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,3)]" -> "[('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',true,3)]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,1), ('a',false,2)]" -> "[('a',false,1), ('a',false,2)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',false,2)]" -> "[('a',false,2)]" [label="ClearCompleted()"]
+  "[('a',false,1), ('a',true,2)]" -> "[('a',false,1)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',true,2)]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,1), ('a',false,3)]" -> "[('a',false,1), ('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',false,3)]" -> "[('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',false,1), ('a',true,3)]" -> "[('a',false,1)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',true,3)]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,2), ('a',false,3)]" -> "[('a',false,2), ('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',true,2), ('a',false,3)]" -> "[('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',false,2), ('a',true,3)]" -> "[('a',false,2)]" [label="ClearCompleted()"]
+  "[('a',true,2), ('a',true,3)]" -> "[]" [label="ClearCompleted()"]
+
+  "[('a',false,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,1), ('a',false,2), ('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',false,2), ('a',false,3)]" -> "[('a',false,2), ('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',false,1), ('a',true,2), ('a',false,3)]" -> "[('a',false,1), ('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',false,1), ('a',false,2), ('a',true,3)]" -> "[('a',false,1), ('a',false,2)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',true,2), ('a',false,3)]" -> "[('a',false,3)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',false,2), ('a',true,3)]" -> "[('a',false,2)]" [label="ClearCompleted()"]
+  "[('a',false,1), ('a',true,2), ('a',true,3)]" -> "[('a',false,1)]" [label="ClearCompleted()"]
+  "[('a',true,1), ('a',true,2), ('a',true,3)]" -> "[]" [label="ClearCompleted()"]
+
+}
+

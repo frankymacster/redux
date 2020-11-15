@@ -30,10 +30,4 @@ const MainSection = ({ todosCount, completedCount, actions }) =>
     </section>
   )
 
-MainSection.propTypes = {
-  todosCount: PropTypes.number.isRequired,
-  completedCount: PropTypes.number.isRequired,
-  actions: PropTypes.object.isRequired
-}
-
 export default MainSection;

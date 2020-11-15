@@ -1,23 +1,50 @@
-open import Data.Bool as Bool using (Bool; false; true; if_then_else_)
+open import Data.Bool as Bool using (Bool; false; true; if_then_else_; not)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; _+_; _≟_; suc)
+open import Data.Nat using (ℕ; _+_; _≟_; suc; _>_; _<_; _∸_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
-open import Data.List as l using (List; filter; map; take; foldl; length)
+open import Data.List as l using (List; filter; map; take; foldl; length; []; _∷_)
 open import Data.List.Properties
+-- open import Data.List.Extrema using (max)
 open import Data.Maybe using (to-witness)
-open import Data.Fin using (fromℕ; _-_; zero)
-open import Data.Product as Prod using (∃; ∃₂; _×_; _,_)
+open import Data.Fin using (fromℕ; _-_; zero; Fin)
+open import Data.Fin.Properties using (≤-totalOrder)
+open import Data.Product as Prod using (∃; ∃₂; _×_; _,_; Σ)
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong)
 open Eq.≡-Reasoning
 open import Level using (Level)
 open import Data.Vec as v using (Vec; fromList; toList; last; length; []; _∷_; [_]; _∷ʳ_; _++_; lookup; head; initLast; filter; map)
+open import Data.Vec.Bounded as vb using ([]; _∷_; fromVec; filter; Vec≤)
 open import Relation.Binary.PropositionalEquality as P
   using (_≡_; _≢_; refl; _≗_; cong₂)
 open import Data.Nat.Properties using (+-comm)
 open import Relation.Unary using (Pred; Decidable)
 open import Relation.Nullary using (does)
-open import Data.Vec.Bounded.Base using (padRight)
+open import Data.Vec.Bounded.Base using (padRight; ≤-cast)
+import Data.Nat.Properties as ℕₚ
+open import Relation.Nullary.Decidable.Core using (dec-false)
+open import Function using (_∘_)
+open import Data.List.Extrema ℕₚ.≤-totalOrder
+
+-- TODO add to std-lib
+open import Relation.Nullary
+
+dec-¬ : ∀ {a} {P : Set a} → Dec P → Dec (¬ P)
+dec-¬ (yes p) = no λ prf → prf p
+dec-¬ (no ¬p) = yes ¬p
+
+vecLast : ∀ {a} {A : Set a} {l} {n : ℕ} (xs : Vec A n) → last (xs ∷ʳ l) ≡ l
+vecLast []       = refl
+vecLast (_ ∷ xs) = P.trans (prop (xs ∷ʳ _)) (vecLast xs)
+  where
+    prop : ∀ {a} {A : Set a} {n x} (xs : Vec A (suc n)) → last (x v.∷ xs) ≡ last xs
+    prop xs with initLast xs
+    ...        | _ , _ , refl = refl
+
+allButLast : ∀ {a} {A : Set a} → List A → List A
+allButLast [] = l.[]
+allButLast (x l.∷ l.[]) = (x l.∷ l.[])
+allButLast (x l.∷ xs) = x l.∷ allButLast xs
 
 
 record Todo : Set where
@@ -26,134 +53,178 @@ record Todo : Set where
     completed : Bool
     id        : ℕ
 
-AddTodo : ∀ {n : ℕ} → (Vec Todo n) → String → (Vec Todo (1 + n))
+TodoListLast : List Todo → Todo
+TodoListLast []             = record {}
+TodoListLast todos@(x ∷ xs) = v.last (v.fromList todos)
+
+
+AddTodo : List Todo → String → List Todo
 AddTodo todos text =
-  todos ∷ʳ
+  todos l.∷ʳ
   record
-    { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
+    { id        = (max 0 (l.map (λ e → Todo.id e) todos)) + 1
     ; completed = false
     ; text      = text
     }
 
-private
-  variable
-    a : Level
-    A : Set a
-
-vecLength-++ :
-  ∀ {n m} (xs : Vec A n) {ys : Vec A m} →
-    v.length (xs ++ ys) ≡ v.length xs + v.length ys
-vecLength-++ []       = refl
-vecLength-++ (x ∷ xs) = cong suc (vecLength-++ xs)
-
 AddTodoAddsNewListItem :
-  ∀ {n : ℕ} → (todos : Vec Todo n) (text : String) →
-    v.length (AddTodo todos text) ≡ v.length todos + 1
-AddTodoAddsNewListItem []       text = refl
-AddTodoAddsNewListItem (x ∷ xs) text =
-  begin
-    v.length (AddTodo (x ∷ xs) text)
-  ≡⟨⟩
-    1 + v.length (x ∷ xs)
-  ≡⟨ +-comm 1 (v.length (x ∷ xs))⟩
-    v.length (x ∷ xs) + 1
-  ∎
+  (todos : List Todo) (text : String) →
+    l.length (AddTodo todos text) ≡ l.length todos + 1
+AddTodoAddsNewListItem todos text = length-++ todos
 
--- TODO add to std-lib
-vecLast : ∀ {a} {A : Set a} {l} {n : ℕ} (xs : Vec A n) → last (xs ∷ʳ l) ≡ l
-vecLast []       = refl
-vecLast (_ ∷ xs) = P.trans (prop (xs ∷ʳ _)) (vecLast xs)
-  where
-    prop : ∀ {a} {A : Set a} {n x} (xs : Vec A (suc n)) → last (x ∷ xs) ≡ last xs
-    prop xs with initLast xs
-    ...        | _ , _ , refl = refl
-
-AddTodoLastAddedElementIsTodo :
-  ∀ {n} (todos : Vec Todo n) (text : String) →
-    last (AddTodo todos text) ≡ 
-      record
-        { id        = 1
-        ; completed = false
-        ; text      = text
-        }
-AddTodoLastAddedElementIsTodo todos text = vecLast todos
-
--- should set (new element).completed to false
 AddTodoSetsNewCompletedToFalse :
-  ∀ {n} (todos : Vec Todo n) (text : String) →
-    Todo.completed (last (AddTodo todos text)) ≡ false
-AddTodoSetsNewCompletedToFalse todos text
-  rewrite
-    (AddTodoLastAddedElementIsTodo todos text) =
-      refl
--- should set (new element).id to an id not existing already in the list
-AddTodoSetsNewIdTo1 :
-  ∀ {n} (todos : Vec Todo n) (text : String) →
-    Todo.id (last (AddTodo todos text)) ≡ 1
-AddTodoSetsNewIdTo1 todos text
-  rewrite
-    (AddTodoLastAddedElementIsTodo todos text) =
-      refl
--- TODO should not touch other elements in the list
+  (todos : List Todo) (text : String) →
+    Todo.completed (TodoListLast (AddTodo todos text)) ≡ false
+AddTodoSetsNewCompletedToFalse todos text = {!   !}
 
-{-# COMPILE JS AddTodo =
-  function (todos) {
-    return function (text) {
-      return [
-        ...todos,
-        {
-          id: todos.reduce((maxId, todo) => Math.max(todo.id, maxId), -1) + 1,
-          completed: false,
-          text: text
-        }
-      ]
-    }
-  }
-#-}
+AddTodoSetsNewIdToNonExistingId :
+  (todos : List Todo) (text : String) →
+    l.length (l.filter (λ todo → dec-¬ (Todo.id todo ≟ Todo.id (TodoListLast (AddTodo todos text)))) (AddTodo todos text)) ≡ 1
+AddTodoSetsNewIdToNonExistingId todos text = {!   !}
 
--- DeleteTodo : (List Todo) → ℕ → (List Todo)
--- DeleteTodo todos id' = filter (λ todo → Todo.id todo ≟ id') todos
+AddTodoSetsNewTextToText :
+  (todos : List Todo) (text : String) →
+    Todo.text (TodoListLast (AddTodo todos text)) ≡ text
+AddTodoSetsNewTextToText todos text = {!   !}
 
-private
-  variable
-    p : Level
+AddTodoDoesntChangeIds :
+  (todos : List Todo) (text : String) →
+    l.map  (λ todo → Todo.id todo) (allButLast (AddTodo todos text)) ≡ l.map (λ todo → Todo.id todo) todos
+AddTodoDoesntChangeIds todos text = {!   !}
 
-DeleteTodo : ∀ {n} → (Vec Todo n) → ℕ → (Vec Todo n)
+AddTodoDoesntChangeText :
+  (todos : List Todo) (text : String) →
+    l.map (λ todo → Todo.text todo) (allButLast (AddTodo todos text)) ≡ l.map (λ todo → Todo.text todo) todos
+AddTodoDoesntChangeText todos text = {!   !}
+
+AddTodoDoesntChangeCompleted :
+  (todos : List Todo) (text : String) →
+    l.map (λ todo → Todo.completed todo) (allButLast (AddTodo todos text)) ≡ l.map (λ todo → Todo.completed todo) todos
+AddTodoDoesntChangeCompleted todos text = {!   !}
+
+AddTodo-not-comm :
+  (todos : List Todo) →
+    (text1 : String) →
+      (text2 : String) →
+  ¬ (AddTodo (AddTodo todos text1) text2 ≡ AddTodo (AddTodo todos text2) text1)
+AddTodo-not-comm todos text1 text2 = {!   !}
+
+-- {-# COMPILE JS AddTodo =
+--   function (todos) {
+--     return function (text) {
+--       return [
+--         ...todos,
+--         {
+--           id: todos.reduce((maxId, todo) => Math.max(todo.id, maxId), -1) + 1,
+--           completed: false,
+--           text: text
+--         }
+--       ]
+--     }
+--   }
+-- #-}
+
+
+DeleteTodo :
+  ∀ {n} →
+    (List Todo)
+      → ℕ →
+        (List Todo)
 DeleteTodo todos id' =
-  padRight
-    record
-      { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
-      ; completed = false
-      ; text      = ""
-      }
-    (v.filter (λ todo → Todo.id todo ≟ id') todos)
+  l.filter (λ todo → dec-¬ (Todo.id todo ≟ id')) todos
 
--- should remove element from the list unless there are no elements
--- should remove element with given id
--- should not touch other elements in the list
+DeleteTodoRemoveTodoWithId :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      l.length (l.filter (λ todo → Todo.id todo ≟ id') (DeleteTodo todos id')) ≡ 0
+DeleteTodoRemoveTodoWithId todos id' = {!   !}
+
+DeleteTodoRemoves1Element :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      l.length (DeleteTodo todos id') ≡ l.length todos ∸ 1
+DeleteTodoRemoves1Element = {!   !}
+
+DeleteTodoDoesntChangeIds :
+  (todos : List Todo) (id : ℕ) →
+    l.map  (λ todo → Todo.id todo) (DeleteTodo todos id) ≡ l.map (λ todo → Todo.id todo) (l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos)
+DeleteTodoDoesntChangeIds todos id = {!   !}
+
+DeleteTodoDoesntChangeText :
+  (todos : List Todo) (id : ℕ) →
+    l.map (λ todo → Todo.id todo) (DeleteTodo todos id) ≡ l.map (λ todo → Todo.id todo) (l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos)
+DeleteTodoDoesntChangeText todos id = {!   !}
+
+DeleteTodoDoesntChangeCompleted :
+  (todos : List Todo) (id : ℕ) →
+    l.map (λ todo → Todo.completed todo) (DeleteTodo todos id) ≡ l.map (λ todo → Todo.completed todo) (l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos)
+DeleteTodoDoesntChangeCompleted todos id = {!   !}
+
+DeleteTodo-idem :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      DeleteTodo (DeleteTodo todos id') id' ≡ DeleteTodo todos id'
+DeleteTodo-idem todos id' =
+  filter-idem (λ e → dec-¬ (Todo.id e ≟ id')) todos
 
 -- {-# COMPILE JS DeleteTodo =
 --   function (todos) {
 --     return function (id) {
 --       return todos.filter(function (todo) {
---         return todo.id === id
+--         return todo.id !== id
 --       });
 --     }
 --   }
 -- #-}
 
-EditTodo : ∀ {n} → (Vec Todo n) → ℕ → String → (Vec Todo n)
+
+-- EditTodo: can't use updateAt since id doesn't necessarily correspond to Vec index
+EditTodo : (List Todo) → ℕ → String → (List Todo)
 EditTodo todos id text =
-  v.map (λ todo →
+  l.map (λ todo →
     if (⌊ Todo.id todo ≟ id ⌋)
     then record todo { text = text }
     else todo)
     todos
 
--- should change (element with given id).text
--- should not (element with given id).id
--- should not (element with given id).completed
--- should not touch other elements in the list
+EditTodoChangesText :
+  (todos : List Todo) (id : ℕ) (text : String) →
+    l.map (λ todo → Todo.text todo) (l.filter (λ todo → Todo.id todo ≟ id) (EditTodo todos id text)) ≡ text l.∷ l.[]
+EditTodoChangesText todos id text = {!   !}
+
+EditTodoDoesntChangeIds :
+  (todos : List Todo) (id : ℕ) (text : String) →
+    l.map (λ todo → Todo.id todo) (EditTodo todos id text) ≡ l.map (λ todo → Todo.id todo) todos
+EditTodoDoesntChangeIds todos id text = {!   !}
+
+EditTodoDoesntChangeOthersText :
+  (todos : List Todo) (id : ℕ) (text : String) →
+    l.map (λ todo → Todo.text todo) (EditTodo todos id text) ≡ l.map (λ todo → Todo.text todo) (l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos)
+EditTodoDoesntChangeOthersText todos id text = {!   !}
+
+EditTodoDoesntChangeCompleted :
+  (todos : List Todo) (id : ℕ) (text : String) →
+    l.map (λ todo → Todo.completed todo) (EditTodo todos id text) ≡ l.map (λ todo → Todo.completed todo) todos
+EditTodoDoesntChangeCompleted todos id text = {!   !}
+
+EditTodoLengthUnchanged :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      (text : String) →
+        l.length (EditTodo todos id' text) ≡ l.length todos
+EditTodoLengthUnchanged todos id' text = {!   !}
+
+EditTodo-idem :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      (text : String) →
+        EditTodo (EditTodo todos id' text) id' text ≡ EditTodo todos id' text
+EditTodo-idem todos id' text =
+  begin
+    EditTodo (EditTodo todos id' text) id' text
+  ≡⟨ {!   !} ⟩
+    EditTodo todos id' text
+  ∎
 
 -- {-# COMPILE JS EditTodo =
 --   function (todos) {
@@ -171,18 +242,51 @@ EditTodo todos id text =
 --   }
 -- #-}
 
-CompleteTodo : ∀ {n} → (Vec Todo n) → ℕ → (Vec Todo n)
+
+CompleteTodo : (List Todo) → ℕ → (List Todo)
 CompleteTodo todos id =
-  v.map (λ todo →
+  l.map (λ todo →
     if (⌊ Todo.id todo ≟ id ⌋)
     then record todo { completed = true }
     else todo)
     todos
 
--- should change (element with given id).completed to true
--- should not (element with given id).id
--- should not (element with given id).text
--- should not touch other elements in the list
+CompleteTodoChangesCompleted :
+  (todos : List Todo) (id : ℕ) →
+    l.map (λ todo → Todo.completed todo) (l.filter (λ todo → Todo.id todo ≟ id) (CompleteTodo todos id)) ≡ true l.∷ l.[] 
+CompleteTodoChangesCompleted todos id = {!   !}
+
+CompleteTodoDoesntChangeIds :
+  (todos : List Todo) (id : ℕ) →
+    l.map (λ todo → Todo.id todo) (CompleteTodo todos id) ≡ l.map (λ todo → Todo.id todo) todos
+CompleteTodoDoesntChangeIds todos id = {!   !}
+
+CompleteTodoDoesntChangeText :
+  (todos : List Todo) (id : ℕ) →
+    l.map (λ todo → Todo.text todo) (CompleteTodo todos id) ≡ l.map (λ todo → Todo.text todo) todos
+CompleteTodoDoesntChangeText todos id = {!   !}
+
+CompleteTodoDoesntChangeOthersCompleted :
+  (todos : List Todo) (id : ℕ) →
+    l.map (λ todo → Todo.completed todo) (CompleteTodo todos id) ≡ l.map (λ todo → Todo.completed todo) (l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos)
+CompleteTodoDoesntChangeOthersCompleted todos id = {!   !}
+
+CompleteTodoLengthUnchanged :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      l.length (CompleteTodo todos id') ≡ l.length todos
+CompleteTodoLengthUnchanged todos id' = {!   !}
+
+CompleteTodo-idem :
+  (todos : List Todo) →
+    (id' : ℕ) →
+      CompleteTodo (CompleteTodo todos id') id' ≡ CompleteTodo todos id'
+CompleteTodo-idem todos id' =
+  begin
+    CompleteTodo (CompleteTodo todos id') id'
+  ≡⟨ {!   !} ⟩
+    CompleteTodo todos id'
+  ∎
 
 -- {-# COMPILE JS CompleteTodo =
 --   function (todos) {
@@ -198,15 +302,37 @@ CompleteTodo todos id =
 --   }
 -- #-}
 
-CompleteAllTodos : ∀ {n} → (Vec Todo n) → (Vec Todo n)
+
+CompleteAllTodos : List Todo → List Todo
 CompleteAllTodos todos =
-  v.map (λ todo →
+  l.map (λ todo →
     record todo { completed = true })
     todos
 
--- should change (all elements).completed to true
--- should not change (all elements).id
--- should not change (all elements).text
+CompleteAllTodosAllCompleted :
+  (todos : List Todo) →
+    l.length (l.filter (λ todo → (Todo.completed todo) Bool.≟ false) (CompleteAllTodos todos)) ≡ 0
+CompleteAllTodosAllCompleted todos = {!   !}
+
+CompleteAllTodosDoesntChangeIds :
+  (todos : List Todo) →
+    l.map (λ todo → Todo.id todo) (CompleteAllTodos todos) ≡ l.map (λ todo → Todo.id todo) todos
+CompleteAllTodosDoesntChangeIds todos = {!   !}
+
+CompleteAllTodosDoesntChangeText :
+  (todos : List Todo) →
+    l.map (λ todo → Todo.text todo) (CompleteAllTodos todos) ≡ l.map (λ todo → Todo.text todo) todos
+CompleteAllTodosDoesntChangeText todos = {!   !}
+
+CompleteAllTodosLengthUnchanged :
+  (todos : List Todo) →
+    l.length (CompleteAllTodos todos) ≡ l.length todos
+CompleteAllTodosLengthUnchanged todos = {!   !}
+
+CompleteAllTodos-idem :
+  (todos : List Todo) →
+    CompleteAllTodos (CompleteAllTodos todos) ≡ CompleteAllTodos todos
+CompleteAllTodos-idem todos = {!   !}
 
 -- {-# COMPILE JS CompleteAllTodos =
 --   function (todos) {
@@ -217,20 +343,36 @@ CompleteAllTodos todos =
 --   }
 -- #-}
 
-ClearCompleted : ∀ {n} → (Vec Todo n) → (Vec Todo n)
-ClearCompleted todos =
-  padRight
-    record
-      { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
-      ; completed = false
-      ; text      = ""
-      }
-    (v.filter (λ todo → Bool._≟_ (Todo.completed todo) true) todos)
 
--- should remove all elements where completed = true
--- should not change other elements
--- should not change (all elements).text
--- should not change (all elements).id
+ClearCompleted : (List Todo) → (List Todo)
+ClearCompleted todos =
+  (l.filter (λ todo → dec-¬ ((Todo.completed todo) Bool.≟ true)) todos)
+
+ClearCompletedRemovesOnlyCompleted :
+  (todos : List Todo) →
+    l.map (λ todo → Todo.completed todo) (ClearCompleted todos) ≡ l.map (λ todo → Todo.completed todo) (l.filter (λ todo → dec-¬ ((Todo.completed todo) Bool.≟ true)) todos)
+ClearCompletedRemovesOnlyCompleted todos = {!   !}
+
+ClearCompletedDoesntChangeCompleted :
+  (todos : List Todo) →
+    l.map (λ todo → Todo.completed todo) (ClearCompleted todos) ≡ l.map (λ todo → Todo.completed todo) (l.filter (λ todo → dec-¬ ((Todo.completed todo) Bool.≟ true)) todos)
+ClearCompletedDoesntChangeCompleted todos = {!   !}
+
+ClearCompletedDoesntChangeIds :
+  (todos : List Todo) →
+    l.map (λ todo → Todo.id todo) (ClearCompleted todos) ≡ l.map (λ todo → Todo.id todo) (l.filter (λ todo → dec-¬ ((Todo.completed todo) Bool.≟ true)) todos)
+ClearCompletedDoesntChangeIds todos = {!   !}
+
+ClearCompletedDoesntChangeText :
+  (todos : List Todo) →
+    l.map (λ todo → Todo.text todo) (ClearCompleted todos) ≡ l.map (λ todo → Todo.text todo) (l.filter (λ todo → dec-¬ ((Todo.completed todo) Bool.≟ true)) todos)
+ClearCompletedDoesntChangeText todos = {!   !}
+
+ClearCompleted-idem :
+  (todos : List Todo) →
+      ClearCompleted (ClearCompleted todos) ≡ ClearCompleted todos
+ClearCompleted-idem todos =
+  filter-idem (λ e → dec-¬ (Todo.completed e Bool.≟ true)) todos
 
 -- {-# COMPILE JS ClearCompleted =
 --   function (todos) {
@@ -239,25 +381,3 @@ ClearCompleted todos =
 --     });
 --   }
 -- #-}
-
--- add-todos-length-increased-by-1 : ∀ (todos : List Todo) → length (AddTodo todos "test")
--- add-todos-length-increased-by-1 = ?
--- delete-todos-length-decreased-by-1-except-if-length-0 : ()
--- edit-todos-length-not-changed : ()
--- complete-todos-length-not-changed : ()
--- complete-all-todos-length-not-changed : ()
-
--- clear-completed-todos-not-have-completed : ()
-
--- should not generate duplicate ids after CLEAR_COMPLETE
-
--- data Action : Set where
---   ADD_TODO DELETE_TODO EDIT_TODO COMPLETE_TODO COMPLETE_ALL_TODOS CLEAR_COMPLETED : Action
-
--- Reducer : Todos → Action → Todos
--- Reducer todos ADD_TODO = AddTodo todos id
--- Reducer todos DELETE_TODO = DeleteTodo todos id
--- Reducer todos EDIT_TODO = EditTodo todos id
--- Reducer todos COMPLETE_TODO = CompleteTodo todos id
--- Reducer todos COMPLETE_ALL_TODOS = CompleteAllTodos todos id
--- Reducer todos CLEAR_COMPLETED = ClearCompleted todos id

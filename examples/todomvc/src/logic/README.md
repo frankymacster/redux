@@ -37,3 +37,33 @@ find . -type f -exec sed -i '' -e 's/require("\([a-zA-Z\.0-9-]*\)")/require(".\/
 ```sh
 browserify app-nodejs.js > bundle.js
 ```
+
+### References
+http://www.cse.chalmers.se/~ulfn/papers/afp08/tutorial.pdf
+http://www.cse.chalmers.se/research/group/logic/book/book.pdf
+https://agda.readthedocs.io/en/v2.6.1.1/language
+
+
+-- AddTodo : (List Todo) → String → (List Todo)
+-- AddTodo todos text =
+--   todos ∷ʳ
+--   record
+--     { id        = 1 -- argmax (λ todo → λ e → e) todos) + 1
+--     ; completed = false
+--     ; text      = text
+--     }
+
+-- -- should add new element to list
+-- AddTodoAddsNewListItem :
+--   (todos : List Todo) (text : String) →
+--     length (AddTodo todos text) ≡ length todos + 1
+-- AddTodoAddsNewListItem todos text = length-++ todos
+  -- begin
+  --   length (AddTodo todos text)
+  -- ≡⟨⟩
+  --   length (todos ++ record { text = text ; completed = false ; id = 1 } ∷ [])
+  -- ≡⟨ length-++ todos ⟩
+  --   length todos + length (record { text = text ; completed = false ; id = 1 } ∷ [])
+  -- ≡⟨⟩
+  --   length todos + 1
+  -- ∎

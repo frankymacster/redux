@@ -14,11 +14,4 @@ const Link = ({ active, children, setFilter }) =>
     </a>
   )
 
-
-Link.propTypes = {
-  active: PropTypes.bool.isRequired,
-  children: PropTypes.node.isRequired,
-  setFilter: PropTypes.func.isRequired
-}
-
 export default Link
