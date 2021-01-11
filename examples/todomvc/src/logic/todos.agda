@@ -15,8 +15,10 @@ open Eq.≡-Reasoning
 open import Level using (Level)
 open import Data.Vec as v using (Vec; fromList; toList; last; length; []; _∷_; [_]; _∷ʳ_; _++_; lookup; head; initLast; filter; map)
 open import Data.Vec.Bounded as vb using ([]; _∷_; fromVec; filter; Vec≤)
+open import Agda.Builtin.Nat public
+  using () renaming (_==_ to _≡ᵇ_)
 open import Relation.Binary.PropositionalEquality as P
-  using (_≡_; _≢_; refl; _≗_; cong₂)
+  using (_≡_; _≢_; refl; _≗_; cong₂; inspect; [_])
 open import Data.Nat.Properties using (+-comm)
 open import Relation.Unary using (Pred; Decidable)
 open import Relation.Nullary using (does)
@@ -34,18 +36,6 @@ dec-¬ : ∀ {a} {P : Set a} → Dec P → Dec (¬ P)
 dec-¬ (yes p) = no λ prf → prf p
 dec-¬ (no ¬p) = yes ¬p
 
-vecLast : ∀ {a} {A : Set a} {l} {n : ℕ} (xs : Vec A n) → last (xs ∷ʳ l) ≡ l
-vecLast []       = refl
-vecLast (_ ∷ xs) = P.trans (prop (xs ∷ʳ _)) (vecLast xs)
-  where
-    prop : ∀ {a} {A : Set a} {n x} (xs : Vec A (suc n)) → last (x v.∷ xs) ≡ last xs
-    prop xs with initLast xs
-    ...        | _ , _ , refl = refl
-
-tail' : ∀ {a} {A : Set a} → List A → List A
-tail' []      = l.[]
-tail' (_ ∷ xs) = xs
-
 -- TODO switch to Vec init?
 allButLast : ∀ {a} {A : Set a} → List A → List A
 allButLast []           = l.[]
@@ -57,6 +47,11 @@ allButLast-∷ʳ {l = []}         = refl
 allButLast-∷ʳ {l = _ ∷ []}     = refl
 allButLast-∷ʳ {l = x ∷ x₁ ∷ l} = cong (x l.∷_) (allButLast-∷ʳ {l = x₁ l.∷ l})
 
+filter' : {A : Set} → (A → Bool) → List A → List A
+filter' p []               = l.[]
+filter' p (x ∷ xs) with (p x)
+...                | true  = x l.∷ filter' p xs
+...                | false = filter' p xs
 
 
 record Todo : Set where
@@ -96,6 +91,7 @@ AddTodoSetsNewCompletedToFalse []          text = refl
 AddTodoSetsNewCompletedToFalse (_ ∷ [])    text = refl
 AddTodoSetsNewCompletedToFalse (_ ∷ _ ∷ l) text = AddTodoSetsNewCompletedToFalse (_ l.∷ l) text
 
+-- TODO can't prove this until AddTodo definition changed
 AddTodoSetsNewIdToNonExistingId :
   (todos : List Todo) (text : String) →
     l.length (l.filter (λ todo → dec-¬ (Todo.id todo ≟ Todo.id (TodoListLast (AddTodo todos text)))) (AddTodo todos text)) ≡ 1
@@ -115,6 +111,7 @@ AddTodoDoesntChangeOtherTodos :
 AddTodoDoesntChangeOtherTodos (x l.∷ xs) text _<_ = allButLast-∷ʳ
 -- END AddTodo is well-defined
 
+-- TODO text1 ≠ text2
 AddTodo-not-comm :
   (todos : List Todo) →
     (text1 : String) →
@@ -138,28 +135,28 @@ AddTodo-not-comm todos text1 text2 = {!   !}
 -- #-}
 
 
-DeleteTodo :
-  ∀ {n} →
-    (List Todo)
-      → ℕ →
-        (List Todo)
-DeleteTodo todos id' =
-  l.filter (λ todo → dec-¬ (Todo.id todo ≟ id')) todos
+DeleteTodo : (List Todo) → ℕ → (List Todo)
+DeleteTodo todos id = l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos
 
--- DeleteTodo is well-defined
-DeleteTodoRemoveTodoWithId :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      l.filter (λ todo → Todo.id todo ≟ id') (DeleteTodo todos id') ≡ l.[]
-DeleteTodoRemoveTodoWithId []       id' = refl
-DeleteTodoRemoveTodoWithId (x ∷ xs) id' = {!   !}
+DeleteTodo' : (List Todo) → ℕ → (List Todo)
+DeleteTodo' todos id = filter' (λ todo → not (Todo.id todo ≡ᵇ id)) todos
+
+DeleteTodo'RemoveTodoWithId :
+  (todos : List Todo) (id : ℕ) →
+    filter' (λ todo → Todo.id todo ≡ᵇ id) (DeleteTodo' todos id) ≡ l.[]
+DeleteTodo'RemoveTodoWithId []       id = refl
+DeleteTodo'RemoveTodoWithId (x ∷ xs) id with (Todo.id x ≡ᵇ id) | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ]                  = DeleteTodo'RemoveTodoWithId xs id
+... | false | P.[ eq ] rewrite eq       = DeleteTodo'RemoveTodoWithId xs id
 
 -- TODO this one needs Todo to specify that it can only have one unique id
-DeleteTodoRemoves1Element :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      l.length (DeleteTodo todos id') ≡ l.length todos ∸ 1
-DeleteTodoRemoves1Element = {!   !}
+DeleteTodo'Removes1Element :
+  (todos : List Todo) (id : ℕ) →
+    l.length (DeleteTodo' todos id) ≡ l.length todos ∸ 1
+DeleteTodo'Removes1Element []       id = refl
+DeleteTodo'Removes1Element (x ∷ xs) id with (Todo.id x ≡ᵇ id) | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ] rewrite eq = {!   !} -- DeleteTodo'Removes1Element xs id
+... | false | P.[ eq ] rewrite eq = {!   !}
 
 DeleteTodoDoesntChangeOtherTodos :
   (todos : List Todo) (id : ℕ) →
@@ -168,11 +165,9 @@ DeleteTodoDoesntChangeOtherTodos todos id = refl
 -- END DeleteTodo is well-defined
 
 DeleteTodo-idem :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      DeleteTodo (DeleteTodo todos id') id' ≡ DeleteTodo todos id'
-DeleteTodo-idem todos id' =
-  filter-idem (λ e → dec-¬ (Todo.id e ≟ id')) todos
+  (todos : List Todo) (id : ℕ) →
+    DeleteTodo (DeleteTodo todos id) id ≡ DeleteTodo todos id
+DeleteTodo-idem todos id = filter-idem (λ e → dec-¬ (Todo.id e ≟ id)) todos
 
 -- {-# COMPILE JS DeleteTodo =
 --   function (todos) {
@@ -194,41 +189,66 @@ EditTodo todos id text =
     else todo)
     todos
 
+EditTodo' : (List Todo) → ℕ → String → (List Todo)
+EditTodo' todos id text =
+  l.map (λ todo →
+    if (Todo.id todo ≡ᵇ id)
+    then record todo { text = text }
+    else todo)
+    todos
+
 -- EditTodo is well-defined
-EditTodoChangesText :
-  (todos : List Todo) (id : ℕ) (text : String) →
-    l.map Todo.text (l.filter (λ todo → Todo.id todo ≟ id) (EditTodo todos id text)) ≡ l.[ text ]
-EditTodoChangesText todos id text = {!   !}
+-- EditTodoChangesText :
+--   (todos : List Todo) (id : ℕ) (text : String) →
+--     l.map Todo.text (l.filter (λ todo → Todo.id todo ≟ id) (EditTodo todos id text)) ≡ l.[ text ]
+-- EditTodoChangesText todos id text = {!   !}
 
-EditTodoDoesntChangeId :
-  (todos : List Todo) (id : ℕ) (text : String) →
-    l.map Todo.id (l.filter (λ todo → Todo.id todo ≟ id) (EditTodo todos id text)) ≡ l.[ id ]
-EditTodoDoesntChangeId todos id text = {!   !}
+-- -- TODO not necessarily true
+-- EditTodo'ChangesText :
+--   (todos : List Todo) (id : ℕ) (text : String) →
+--     l.map Todo.text (EditTodo' (filter' (λ todo → Todo.id todo ≡ᵇ id) todos) id text) ≡ l.map Todo.text (filter' (λ todo → Todo.id todo ≡ᵇ id) todos)
+-- EditTodo'ChangesText []       id text = refl
+-- EditTodo'ChangesText (x ∷ xs) id text with (Todo.id x ≡ᵇ id) | inspect (_≡ᵇ id) (Todo.id x)
+-- ... | true  | P.[ eq ] rewrite eq = {!   !} -- cong (Todo.text x l.∷_) (EditTodo'ChangesText xs id text)
+-- ... | false | P.[ eq ] rewrite eq = EditTodo'ChangesText xs id text
 
-EditTodoDoesntChangeCompleted :
+EditTodo'DoesntChangeId :
   (todos : List Todo) (id : ℕ) (text : String) →
-    l.map Todo.completed (l.filter (λ todo → Todo.id todo ≟ id) (EditTodo todos id text)) ≡ l.map Todo.completed (l.filter (λ todo → Todo.id todo ≟ id) todos)
-EditTodoDoesntChangeCompleted todos id text = {!   !}
+    l.map Todo.id (EditTodo' todos id text) ≡ l.map Todo.id todos
+EditTodo'DoesntChangeId []       id text = refl
+EditTodo'DoesntChangeId (x ∷ xs) id text with (Todo.id x ≡ᵇ id)
+... | true  = cong ((Todo.id x) l.∷_) (EditTodo'DoesntChangeId xs id text)
+... | false = cong ((Todo.id x) l.∷_) (EditTodo'DoesntChangeId xs id text)
 
-EditTodoDoesntChangeOtherTodos :
+EditTodo'DoesntChangeCompleted :
   (todos : List Todo) (id : ℕ) (text : String) →
-    l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) (EditTodo todos id text) ≡ l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos
-EditTodoDoesntChangeOtherTodos todos id text = {!   !}
+    l.map Todo.completed (EditTodo' todos id text) ≡ l.map Todo.completed todos
+EditTodo'DoesntChangeCompleted []       id text = refl
+EditTodo'DoesntChangeCompleted (x ∷ xs) id text with (Todo.id x ≡ᵇ id)
+... | true  = cong ((Todo.completed x) l.∷_) (EditTodo'DoesntChangeCompleted xs id text)
+... | false = cong ((Todo.completed x) l.∷_) (EditTodo'DoesntChangeCompleted xs id text)
+
+EditTodo'DoesntChangeOtherTodos :
+  (todos : List Todo) (id : ℕ) (text : String) →
+    filter' (λ todo → not (Todo.id todo ≡ᵇ id)) (EditTodo' todos id text) ≡ filter' (λ todo → not (Todo.id todo ≡ᵇ id)) todos
+EditTodo'DoesntChangeOtherTodos []       id text = refl
+EditTodo'DoesntChangeOtherTodos (x ∷ xs) id text with (Todo.id x ≡ᵇ id) | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ] rewrite eq = EditTodo'DoesntChangeOtherTodos xs id text
+... | false | P.[ eq ] rewrite eq = cong (x l.∷_) (EditTodo'DoesntChangeOtherTodos xs id text)
 
 EditTodoLengthUnchanged :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      (text : String) →
-        l.length (EditTodo todos id' text) ≡ l.length todos
+  (todos : List Todo) (id' : ℕ) (text : String) →
+    l.length (EditTodo todos id' text) ≡ l.length todos
 EditTodoLengthUnchanged todos id' text = length-map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { text = text } else todo) todos
 -- END EditTodo is well-defined
 
-EditTodo-idem :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      (text : String) →
-        EditTodo (EditTodo todos id' text) id' text ≡ EditTodo todos id' text
-EditTodo-idem todos id' text = {!   !}
+EditTodo'-idem :
+  (todos : List Todo) (id : ℕ) (text : String) →
+    EditTodo' (EditTodo' todos id text) id text ≡ EditTodo' todos id text
+EditTodo'-idem []       id text = refl
+EditTodo'-idem (x ∷ xs) id text with (Todo.id x ≡ᵇ id) | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ] rewrite eq = cong (record x { text = text } List.∷_) (EditTodo'-idem xs id text)
+... | false | P.[ eq ] rewrite eq = cong (x List.∷_) (EditTodo'-idem xs id text)
 
 -- {-# COMPILE JS EditTodo =
 --   function (todos) {
@@ -255,11 +275,23 @@ CompleteTodo todos id =
     else todo)
     todos
 
+CompleteTodo' : (List Todo) → ℕ → (List Todo)
+CompleteTodo' todos id =
+  l.map (λ todo →
+    if (Todo.id todo ≡ᵇ id)
+    then record todo { completed = true }
+    else todo)
+    todos
+
 -- CompleteTodo is well-defined
-CompleteTodoChangesCompleted :
+-- TODO don't know if there is only one instance of Todo with that id
+CompleteTodo'ChangesCompleted :
   (todos : List Todo) (id : ℕ) →
-    l.map Todo.completed (l.filter (λ todo → Todo.id todo ≟ id) (CompleteTodo todos id)) ≡ l.[ true ] 
-CompleteTodoChangesCompleted todos id = {!   !}
+    l.map Todo.completed (filter' (λ todo → Todo.id todo ≡ᵇ id) (CompleteTodo' todos id)) ≡ l.map (λ todo → true) (filter' (λ todo → Todo.id todo ≡ᵇ id) todos)
+CompleteTodo'ChangesCompleted []       id = refl
+CompleteTodo'ChangesCompleted (x ∷ xs) id with Todo.id x ≡ᵇ id | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ] rewrite eq = cong (true l.∷_) (CompleteTodo'ChangesCompleted xs id)
+... | false | P.[ eq ] rewrite eq = CompleteTodo'ChangesCompleted xs id
 
 CompleteTodoDoesntChangeIds :
   (todos : List Todo) (id : ℕ) →
@@ -319,36 +351,27 @@ CompleteTodoDoesntChangeText (x ∷ xs) id =
     l.map Todo.text (x l.∷ xs)
   ∎
 
-
--- TODO this is false
-CompleteTodoDoesntChangeOthersCompleted :
+CompleteTodo'DoesntChangeOthersCompleted :
   (todos : List Todo) (id : ℕ) →
-    l.map Todo.completed (CompleteTodo todos id) ≡ l.map Todo.completed (l.filter (λ todo → dec-¬ (Todo.id todo ≟ id)) todos)
-CompleteTodoDoesntChangeOthersCompleted todos id = {!   !}
+    l.map Todo.completed (CompleteTodo' (filter' (λ todo → not (Todo.id todo ≡ᵇ id)) todos) id) ≡ l.map Todo.completed (filter' (λ todo → not (Todo.id todo ≡ᵇ id)) todos)
+CompleteTodo'DoesntChangeOthersCompleted []       id = refl
+CompleteTodo'DoesntChangeOthersCompleted (x ∷ xs) id with Todo.id x ≡ᵇ id | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ] rewrite eq = CompleteTodo'DoesntChangeOthersCompleted xs id -- 
+... | false | P.[ eq ] rewrite eq = cong (Todo.completed x l.∷_) (CompleteTodo'DoesntChangeOthersCompleted xs id)
 
 CompleteTodoLengthUnchanged :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      l.length (CompleteTodo todos id') ≡ l.length todos
-CompleteTodoLengthUnchanged todos id' = length-map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { completed = true } else todo) todos
+  (todos : List Todo) (id : ℕ) →
+    l.length (CompleteTodo todos id) ≡ l.length todos
+CompleteTodoLengthUnchanged todos id = length-map (λ todo → if (⌊ Todo.id todo ≟ id ⌋) then record todo { completed = true } else todo) todos
 -- END CompleteTodo is well-defined
 
-CompleteTodo-idem :
-  (todos : List Todo) →
-    (id' : ℕ) →
-      CompleteTodo (CompleteTodo todos id') id' ≡ CompleteTodo todos id'
-CompleteTodo-idem todos id' =
-  begin
-    CompleteTodo (CompleteTodo todos id') id'
-  ≡⟨⟩
-    l.map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { completed = true } else todo) (l.map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { completed = true } else todo) todos)
-  -- ≡⟨⟩
-  --   (l.map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { completed = true } else todo)) ∘ (l.map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { completed = true } else todo)) todos
-  ≡⟨ {!   !} ⟩
-    l.map (λ todo → if (⌊ Todo.id todo ≟ id' ⌋) then record todo { completed = true } else todo) todos
-  ≡⟨⟩
-    CompleteTodo todos id'
-  ∎
+CompleteTodo'-idem :
+  (todos : List Todo) (id : ℕ) →
+    CompleteTodo' (CompleteTodo' todos id) id ≡ CompleteTodo' todos id
+CompleteTodo'-idem []       id = refl
+CompleteTodo'-idem (x ∷ xs) id with Todo.id x ≡ᵇ id | inspect (_≡ᵇ id) (Todo.id x)
+... | true  | P.[ eq ] rewrite eq = cong (record x { completed = true } l.∷_) (CompleteTodo'-idem xs id)
+... | false | P.[ eq ] rewrite eq = cong (x l.∷_) (CompleteTodo'-idem xs id)
 
 -- {-# COMPILE JS CompleteTodo =
 --   function (todos) {
@@ -381,21 +404,56 @@ CompleteAllTodosAllCompleted (x ∷ xs) = CompleteAllTodosAllCompleted xs
 CompleteAllTodosDoesntChangeIds :
   (todos : List Todo) →
     l.map Todo.id (CompleteAllTodos todos) ≡ l.map Todo.id todos
-CompleteAllTodosDoesntChangeIds todos = {!   !}
+CompleteAllTodosDoesntChangeIds []       = refl
+CompleteAllTodosDoesntChangeIds (x ∷ []) = cong (l._∷ l.[]) (helper x)
+  where
+    helper :
+      (x : Todo) →
+        Todo.id (record x { completed = true }) ≡ Todo.id x
+    helper x = refl
+CompleteAllTodosDoesntChangeIds (x ∷ xs) =
+  begin
+    l.map Todo.id (CompleteAllTodos (x l.∷ xs))
+  ≡⟨⟩
+    (l.map Todo.id (CompleteAllTodos l.[ x ])) l.++ l.map Todo.id (CompleteAllTodos xs)
+  ≡⟨ cong (l._++ l.map Todo.id (CompleteAllTodos xs)) (CompleteAllTodosDoesntChangeIds (x l.∷ l.[])) ⟩
+    l.map Todo.id (l.[ x ]) l.++ l.map Todo.id (CompleteAllTodos xs)
+  ≡⟨⟩
+    l.[ Todo.id x ] l.++ l.map Todo.id (CompleteAllTodos xs)
+  ≡⟨⟩
+    Todo.id x l.∷ l.map Todo.id (CompleteAllTodos xs)
+  ≡⟨ cong (Todo.id x l.∷_) (CompleteAllTodosDoesntChangeIds xs) ⟩
+    Todo.id x l.∷ l.map Todo.id xs
+  ≡⟨⟩
+    l.map Todo.id (x l.∷ xs)
+  ∎
 
 CompleteAllTodosDoesntChangeText :
   (todos : List Todo) →
     l.map Todo.text (CompleteAllTodos todos) ≡ l.map Todo.text todos
-CompleteAllTodosDoesntChangeText todos = {!   !}
-  -- begin
-  --   l.map Todo.text (CompleteAllTodos todos)
-  -- ≡⟨⟩
-  --   l.map Todo.text (l.map (λ todo → record todo { completed = true }) todos)
-  -- ≡⟨ map-compose {Todo.text} {λ todo → record todo { completed = true }} ⟩
-  --   l.map (Todo.text ∘ (λ todo → record todo { completed = true })) todos
-  -- ≡⟨ {!   !} ⟩
-  --   l.map Todo.text todos
-  -- ∎
+CompleteAllTodosDoesntChangeText []       = refl
+CompleteAllTodosDoesntChangeText (x ∷ []) = cong (l._∷ l.[]) (helper x)
+  where
+    helper :
+      (x : Todo) →
+        Todo.text (record x { completed = true }) ≡ Todo.text x
+    helper x = refl
+CompleteAllTodosDoesntChangeText (x ∷ xs) =
+  begin
+    l.map Todo.text (CompleteAllTodos (x l.∷ xs))
+  ≡⟨⟩
+    (l.map Todo.text (CompleteAllTodos l.[ x ])) l.++ l.map Todo.text (CompleteAllTodos xs)
+  ≡⟨ cong (l._++ l.map Todo.text (CompleteAllTodos xs)) (CompleteAllTodosDoesntChangeText (x l.∷ l.[])) ⟩
+    l.map Todo.text (l.[ x ]) l.++ l.map Todo.text (CompleteAllTodos xs)
+  ≡⟨⟩
+    l.[ Todo.text x ] l.++ l.map Todo.text (CompleteAllTodos xs)
+  ≡⟨⟩
+    Todo.text x l.∷ l.map Todo.text (CompleteAllTodos xs)
+  ≡⟨ cong (Todo.text x l.∷_) (CompleteAllTodosDoesntChangeText xs) ⟩
+    Todo.text x l.∷ l.map Todo.text xs
+  ≡⟨⟩
+    l.map Todo.text (x l.∷ xs)
+  ∎
 
 CompleteAllTodosLengthUnchanged :
   (todos : List Todo) →
